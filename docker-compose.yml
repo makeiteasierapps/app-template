@@ -1,0 +1,45 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    env_file:
+      - server/.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: web
+    environment:
+      DOCKER: "1"
+    depends_on:
+      - backend
+    ports:
+      - "127.0.0.1:3099:3099"
+    restart: unless-stopped
+
+  # --- Optional: local MongoDB (uncomment to use) ---
+  # If your dev machine is on the Headscale VPN, you can instead point
+  # MONGO_URI_DEV at the cluster MongoDB (10.50.10.10:27017) in server/.env
+  # and skip this service entirely.
+  #
+  # mongodb:
+  #   image: mongo:8.0
+  #   ports:
+  #     - "127.0.0.1:27017:27017"
+  #   environment:
+  #     MONGO_INITDB_ROOT_USERNAME: adminUser
+  #     MONGO_INITDB_ROOT_PASSWORD: password
+  #   volumes:
+  #     - mongodb_data:/data/db
+  #   restart: unless-stopped
+
+# volumes:
+#   mongodb_data:

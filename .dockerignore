@@ -1,0 +1,26 @@
+# General
+.git
+.gitignore
+.vscode
+.DS_Store
+
+# Node
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-lock.yaml
+
+# Builds
+/dist
+/build
+
+# Python
+**/__pycache__/
+**/*.pyc
+.venv
+venv
+
+# Env
+.env
+.env.*
