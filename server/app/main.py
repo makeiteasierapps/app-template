@@ -4,7 +4,11 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
+from app.routes.auth import router as auth_router
+
 app = FastAPI(title="__PROJECT_NAME__ API")
+
+app.include_router(auth_router, prefix="/api/auth")
 
 
 @app.get("/health")

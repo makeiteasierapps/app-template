@@ -100,7 +100,7 @@ Push to `main` → GitHub Actions builds the `platform` Dockerfile target → pu
 ├── .dockerignore
 ├── .gitignore
 ├── components.json             # shadcn/ui config
-├── docker-compose.yml          # Local dev (frontend + backend + optional mongo)
+├── docker-compose.yml          # Local dev (frontend + backend + MongoDB)
 ├── Dockerfile                  # Multi-target: api, web, platform
 ├── eslint.config.js
 ├── index.html
@@ -136,15 +136,25 @@ The template includes MongoDB support that's disabled by default.
    app.include_router(items_router, prefix="/api")
    ```
 
-### Database connection modes
+### Local dev database
 
-| Mode | `MONGO_URI_DEV` | When to use |
-|------|-----------------|-------------|
-| **Local MongoDB** | `mongodb://adminUser:password@localhost:27017/admin` | Isolated local dev (uncomment `mongodb` service in `docker-compose.yml`) |
-| **VPN to cluster** | `mongodb://adminUser:password@10.50.10.10:27017/admin` | Dev machine connected to Headscale VPN — uses the cluster's MongoDB directly |
-| **Production** | Set via AWS Secrets Manager → ExternalSecret | Automatic in Kubernetes |
+**Local dev always uses a local database.** The `docker-compose.yml` includes a MongoDB 8.0 service with dev-only credentials (`dev`/`dev`). Never use production credentials locally.
 
-Set `LOCAL_DEV=true` in your `.env` to use `MONGO_URI_DEV` instead of `MONGO_URI`.
+```bash
+cp server/.env.example server/.env   # Already has local MongoDB credentials
+docker compose up -d mongodb         # Start just MongoDB, or `docker compose up --build` for everything
+```
+
+### Environment separation
+
+The same three env vars are used everywhere — only the values differ:
+
+| Environment | `MONGO_URI` | `MONGO_USERNAME` / `MONGO_PASSWORD` | Source |
+|-------------|-------------|-------------------------------------|--------|
+| Local dev | `mongodb://localhost:27017` | `dev` / `dev` | `server/.env` |
+| Production | `mongodb://mongo-svc.mongodb.svc.cluster.local:27017/admin` | `admin` / *(auto-seeded)* | Platform injects via ExternalSecret |
+
+When deploying via Observatory, check **"Needs MongoDB"** to have the platform inject these automatically.
 
 ---
 

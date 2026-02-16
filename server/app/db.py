@@ -4,6 +4,11 @@ MongoDB async client using Motor.
 This module is opt-in. To enable:
 1. Uncomment `motor>=3.3.0` in server/requirements.txt
 2. Import and use in your routes (see server/app/routes/items.py for examples)
+
+Environment variables (set in .env for local dev, injected by the platform in production):
+  MONGO_URI      — MongoDB connection string (default: mongodb://localhost:27017)
+  MONGO_USERNAME — MongoDB username (default: empty)
+  MONGO_PASSWORD — MongoDB password (default: empty)
 """
 
 import logging
@@ -12,81 +17,47 @@ import os
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 
+logger = logging.getLogger(__name__)
 
-class MongoDbClient:
-    """Async MongoDB client using Motor."""
+_client: AsyncIOMotorClient | None = None
+_db = None
 
-    def __init__(self, db_name: str = "__PROJECT_NAME__"):
-        self.logger = logging.getLogger(__name__)
-        self.mongo_uri = self._load_mongo_uri()
-        self.db_name = db_name
-        self._client: AsyncIOMotorClient | None = None
-        self._db = None
-        self._connect()
-
-    def _load_mongo_uri(self) -> str:
-        load_dotenv(override=True)
-        is_local = os.getenv("LOCAL_DEV", "").lower() == "true"
-        uri = os.getenv("MONGO_URI_DEV") if is_local else os.getenv("MONGO_URI")
-
-        if not uri:
-            self.logger.error("MongoDB URI not found in environment variables")
-            raise ValueError("MONGO_URI or MONGO_URI_DEV must be set")
-
-        self.logger.info(
-            "Loaded MongoDB URI for %s environment",
-            "development" if is_local else "production",
-        )
-        return uri
-
-    def _connect(self) -> None:
-        if not self._client:
-            self.logger.info("Connecting to MongoDB...")
-            try:
-                self._client = AsyncIOMotorClient(self.mongo_uri)
-                self._db = self._client[self.db_name]
-                self.logger.info(
-                    "Successfully connected to MongoDB database: %s", self.db_name
-                )
-            except Exception as e:
-                self.logger.error("Failed to connect to MongoDB: %s", str(e))
-                raise
-
-    @property
-    def db(self):
-        """Get the database instance."""
-        if self._db is None:
-            self._connect()
-        return self._db
-
-    @property
-    def client(self) -> AsyncIOMotorClient:
-        """Get the MongoDB client instance."""
-        if self._client is None:
-            self._connect()
-        return self._client
-
-    def close(self) -> None:
-        """Close the MongoDB connection."""
-        if self._client:
-            self._client.close()
-            self._client = None
-            self._db = None
-            self.logger.info("MongoDB connection closed")
+DB_NAME = "__PROJECT_NAME__"
 
 
-# Singleton instance
-_mongo_client: MongoDbClient | None = None
-
-
-def get_db_client(db_name: str = "__PROJECT_NAME__") -> MongoDbClient:
-    """Get or create the MongoDB client singleton."""
-    global _mongo_client
-    if _mongo_client is None:
-        _mongo_client = MongoDbClient(db_name)
-    return _mongo_client
+def _get_settings():
+    load_dotenv(override=True)
+    return {
+        "uri": os.getenv("MONGO_URI", "mongodb://localhost:27017"),
+        "username": os.getenv("MONGO_USERNAME", ""),
+        "password": os.getenv("MONGO_PASSWORD", ""),
+    }
 
 
 def get_db():
-    """FastAPI dependency to get the database."""
-    return get_db_client().db
+    """Get the database instance (lazy-init)."""
+    global _client, _db
+    if _db is not None:
+        return _db
+
+    settings = _get_settings()
+    kwargs = {"directConnection": True}
+    if settings["username"] and settings["password"]:
+        kwargs["username"] = settings["username"]
+        kwargs["password"] = settings["password"]
+        kwargs["authSource"] = "admin"
+
+    logger.info("Connecting to MongoDB at %s", settings["uri"])
+    _client = AsyncIOMotorClient(settings["uri"], **kwargs)
+    _db = _client[DB_NAME]
+    return _db
+
+
+def close_db():
+    """Close the MongoDB connection."""
+    global _client, _db
+    if _client:
+        _client.close()
+        _client = None
+        _db = None
+        logger.info("MongoDB connection closed")
