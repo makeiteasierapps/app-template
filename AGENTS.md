@@ -1,6 +1,6 @@
 # App Template AGENTS Guide
 
-This template is the default starting point for platform apps. Keep it production-ready, simple to adopt, and aligned with platform deployment flows.
+This template is the default starting point for platform apps. Aim to keep it production-ready, simple to adopt, and aligned with platform deployment flows.
 
 ## Template Intent
 
@@ -10,7 +10,7 @@ This template is the default starting point for platform apps. Keep it productio
 
 ## Compatibility Guidance
 
-When changing template behavior, verify alignment with:
+When changing template behavior, verify alignment when possible with:
 
 - Observatory deployment assumptions (manifests, env var injection, health path expectations)
 - GitOps image update workflow and repo conventions

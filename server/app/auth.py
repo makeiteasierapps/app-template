@@ -90,6 +90,7 @@ async def submit_registration_flow(
         "password": password,
         "traits": {
             "email": email,
+            "app_id": config.APP_ID,
         },
     }
     if first_name or last_name:
@@ -141,6 +142,7 @@ def _extract_user(session: dict) -> dict:
         "email": traits.get("email"),
         "first_name": name.get("first", ""),
         "last_name": name.get("last", ""),
+        "app_id": traits.get("app_id", ""),
     }
 
 
@@ -162,7 +164,8 @@ async def get_current_user(request: Request) -> dict:
 
     When AUTH_ENABLED is false, returns a mock user for local development.
     When AUTH_ENABLED is true, reads the session cookie and validates it
-    against the Kratos public API.
+    against the Kratos public API. Also validates the user's app_id matches
+    this application to prevent cross-site access.
     """
     if not config.AUTH_ENABLED:
         return MOCK_USER
@@ -181,4 +184,13 @@ async def get_current_user(request: Request) -> dict:
             detail="Invalid or expired session",
         )
 
-    return _extract_user(session)
+    user = _extract_user(session)
+
+    # Validate user belongs to this app (site isolation)
+    if user.get("app_id") != config.APP_ID:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: user not registered on this application",
+        )
+
+    return user
