@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "bash .cursor/hooks/deny-terraform-mutate.sh",
+        "matcher": "terraform",
+        "failClosed": true
+      }
+    ]
+  }
+}
